@@ -13,7 +13,9 @@ processing whack msg time: X size: Y
 | processing whack message of size: A
 processing whack msg time: X size: Y
 | Added new connection mytunnel-no-ikev2 with policy RSASIG+ENCRYPT+TUNNEL+PFS+!IKEv1+IKEv2Init+SAREFTRACK
+./h2hR1-noikev2 use keyid: 1:<> / 2:<>
 | counting wild cards for 192.168.1.1 is 0
+./h2hR1-noikev2 use keyid: 1:<> / 2:<>
 | counting wild cards for 132.213.238.7 is 0
 | orient mytunnel-no-ikev2 checking against if: eth0 (AF_INET:132.213.238.7:500)
 |     orient matched on IP
@@ -163,6 +165,7 @@ sending 36 bytes for send_v2_notification through eth0:500 to 192.168.1.1:500 (u
 ./h2hR1-noikev2 leak: default conf ipsec_conf_dir, item size: X
 ./h2hR1-noikev2 leak: 2 * id list, item size: X
 ./h2hR1-noikev2 leak: rfc3110 format of public key [created], item size: X
+./h2hR1-noikev2 leak: pubkey, item size: X
 ./h2hR1-noikev2 leak: secret, item size: X
 ./h2hR1-noikev2 leak: 2 * hasher name, item size: X
 ./h2hR1-noikev2 leak detective found Z leaks, total size X

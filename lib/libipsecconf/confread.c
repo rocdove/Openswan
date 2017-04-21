@@ -36,6 +36,8 @@
 
 #include "oswalloc.h"
 #include "libopenswan.h"
+#include "secrets.h"
+#include "oswkeys.h"
 
 #include "ipsecconf/parser.h"
 #include "ipsecconf/files.h"
@@ -142,11 +144,6 @@ void ipsecconf_default_values(struct starter_config *cfg)
 	anyaddr(AF_INET, &cfg->conn_default.right.addr);
 	cfg->conn_default.right.nexttype = KH_NOTSET;
 	anyaddr(AF_INET, &cfg->conn_default.right.nexthop);
-
-	/* default is to look in DNS */
-	cfg->conn_default.left.key_from_DNS_on_demand = TRUE;
-	cfg->conn_default.right.key_from_DNS_on_demand = TRUE;
-
 
 	cfg->conn_default.options[KBF_AUTO] = STARTUP_NO;
 	cfg->conn_default.state = STATE_LOADED;
@@ -528,27 +525,43 @@ static bool validate_end(struct starter_conn *conn_st
 	end->rsakey2_type = end->options[KSCF_RSAKEY2];
 
 	switch(end->rsakey1_type) {
+        case PUBKEY_NOTSET:
+            /* really should not happen! */
+            break;
+
 	case PUBKEY_DNS:
 	case PUBKEY_DNSONDEMAND:
-	    end->key_from_DNS_on_demand = TRUE;
+        case PUBKEY_CERTIFICATE:
+            /* pass it on */
 	    break;
 
-	default:
-	    end->key_from_DNS_on_demand = FALSE;
+        case PUBKEY_PREEXCHANGED:
 	    /* validate the KSCF_RSAKEY1/RSAKEY2 */
-	    if(end->strings[KSCF_RSAKEY1] != NULL)
+	    if(end->strings_set[KSCF_RSAKEY1])
 	    {
 		char *value = end->strings[KSCF_RSAKEY1];
+                osw_public_key opk1;
+                zero(&opk1);
 
                 pfreeany(end->rsakey1);
                 end->rsakey1 = (unsigned char *)clone_str(value,"end->rsakey1");
+                if(str2pubkey(end->rsakey1, PUBKEY_ALG_RSA, &opk1) == NULL) {
+                    end->rsakey1_ckaid = clone_str(opk1.key_ckaid_print_buf, "end->rsakey1_ckaid");
+                    free_RSA_public_content(&opk1.u.rsa);
+                }
 	    }
-	    if(end->strings[KSCF_RSAKEY2] != NULL)
+	    if(end->strings_set[KSCF_RSAKEY2])
 	    {
 		char *value = end->strings[KSCF_RSAKEY2];
+                osw_public_key opk2;
+                zero(&opk2);
 
                 pfreeany(end->rsakey2);
                 end->rsakey2 = (unsigned char *)clone_str(value,"end->rsakey2");
+                if(str2pubkey(end->rsakey2, PUBKEY_ALG_RSA, &opk2) == NULL) {
+                    end->rsakey2_ckaid = clone_str(opk2.key_ckaid_print_buf, "end->rsakey2_ckaid");
+                    free_RSA_public_content(&opk2.u.rsa);
+                }
 	    }
 	}
     }
@@ -582,10 +595,12 @@ static bool validate_end(struct starter_conn *conn_st
 
     /* copy certificate path name */
     if(end->strings_set[KSCF_CERT]) {
+        end->rsakey1_type = PUBKEY_CERTIFICATE;
         end->cert = clone_str(end->strings[KSCF_CERT], "KSCF_CERT");
     }
 
     if(end->strings_set[KSCF_CA]) {
+        end->rsakey1_type = PUBKEY_CERTIFICATE;
         end->ca = clone_str(end->strings[KSCF_CA], "KSCF_CA");
     }
 
@@ -1521,6 +1536,12 @@ static void confread_free_conn(struct starter_conn *conn)
     pfreeany(conn->right.id);
     pfreeany(conn->right.rsakey1);
     pfreeany(conn->right.rsakey2);
+
+    pfreeany(conn->left.rsakey1_ckaid);
+    pfreeany(conn->left.rsakey2_ckaid);
+    pfreeany(conn->right.rsakey1_ckaid);
+    pfreeany(conn->right.rsakey2_ckaid);
+
     for(i=0; i<KSCF_MAX; i++) {
         pfreeany(conn->left.strings[i]);
         pfreeany(conn->right.strings[i]);

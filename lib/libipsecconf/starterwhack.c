@@ -193,6 +193,7 @@ int serialize_whack_msg(struct whack_message *msg)
 	/**
 	 * Pack strings
 	 */
+        wp.cnt = 0;
 	wp.msg = msg;
 	wp.str_next = (unsigned char *)msg->string;
 	wp.str_roof = (unsigned char *)&msg->string[sizeof(msg->string)];
@@ -423,21 +424,28 @@ static int set_whack_end(struct starter_config *cfg
 	w->has_client_wildcard = l->has_client_wildcard;
 	w->has_port_wildcard   = l->has_port_wildcard;
 
-	w->cert = l->cert;
-	w->ca   = l->ca;
-	if(l->options_set[KNCF_SENDCERT]) {
-		w->sendcert = l->options[KNCF_SENDCERT];
-        } else {
-                w->sendcert = cert_alwayssend;
+        if(l->rsakey1_type == PUBKEY_CERTIFICATE) {
+          w->cert = l->cert;
+          w->ca   = l->ca;
+          if(l->options_set[KNCF_SENDCERT]) {
+            w->sendcert = l->options[KNCF_SENDCERT];
+          } else {
+            w->sendcert = cert_alwayssend;
+          }
+        } else if(l->rsakey1_type == PUBKEY_PREEXCHANGED) {
+          /* overloading w->cert and w->ca to avoid adding more useless
+           * strings to whack structure. Wish it was JSON...
+           */
+          w->cert = l->rsakey1_ckaid;
+          w->ca   = l->rsakey2_ckaid;
         }
-
+	w->keytype = l->rsakey1_type;
 
 	w->updown = l->updown;
 	w->virt   = NULL;
 	w->protocol = l->protocol;
 	w->port = l->port;
 	w->virt = l->virt;
-	w->key_from_DNS_on_demand = l->key_from_DNS_on_demand;
 
 	if(l->options_set[KNCF_XAUTHSERVER]) {
 		w->xauth_server = l->options[KNCF_XAUTHSERVER];
@@ -470,6 +478,7 @@ int starter_whack_build_pkmsg(struct starter_config *cfg,
                               unsigned int keynum,
                               enum pubkey_source key_type,
                               unsigned char *rsakey,
+                              char **p_ckaid,
                               const char *lr)
 {
   unsigned char keyspace[1024 + 4];
@@ -530,14 +539,14 @@ static int starter_whack_add_pubkey (struct starter_config *cfg,
 
 	init_whack_msg(&msg);
         if(starter_whack_build_pkmsg(cfg, &msg, conn, end,
-                                      1, end->rsakey1_type, end->rsakey1, lr)==0) {
+                                     1, end->rsakey1_type, end->rsakey1, &end->rsakey1_ckaid, lr)==0) {
           ret = send_whack_msg(cfg, &msg);
           if(ret != 0) return ret;
         }
 
 	init_whack_msg(&msg);
         if(starter_whack_build_pkmsg(cfg, &msg, conn, end,
-                                      2, end->rsakey2_type, end->rsakey2, lr)==0) {
+                                     2, end->rsakey2_type, end->rsakey2, &end->rsakey2_ckaid, lr)==0) {
           ret = send_whack_msg(cfg, &msg);
           if(ret != 0) return ret;
         }

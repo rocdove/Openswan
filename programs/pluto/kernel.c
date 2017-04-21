@@ -1772,7 +1772,7 @@ setup_half_ipsec_sa(struct state *parent_st
 	    outgoing_ref_set  = TRUE;
 	}
 
-        if (!kernel_ops->add_sa(said_next, replace)) {
+        if (!kernel_ops->add_sa(said_next, FALSE)) {
 	    DBG(DBG_KLIPS, DBG_log("add_sa tunnel failed"));
             goto fail;
 	}
@@ -1917,7 +1917,6 @@ setup_half_ipsec_sa(struct state *parent_st
 
     /* set up AH SA, if any */
 
-    DBG(DBG_KLIPS, DBG_log("ah maybe"));
     if (st->st_ah.present)
     {
         ipsec_spi_t ah_spi = inbound? st->st_ah.our_spi : st->st_ah.attrs.spi;

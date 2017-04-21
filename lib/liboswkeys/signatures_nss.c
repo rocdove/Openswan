@@ -79,7 +79,7 @@
 /* makes subsequent code comparisons easier */
 #define lsw_return_nss_password_file_info osw_return_nss_password_file_info
 
-int sign_hash(const struct RSA_private_key *k
+int sign_hash(const struct private_key_stuff *pks
               , const u_char *hash_val, size_t hash_len
               , u_char *sig_val, size_t sig_len)
 {
@@ -88,6 +88,7 @@ int sign_hash(const struct RSA_private_key *k
     SECItem data;
     SECItem ckaId;
     PK11SlotInfo *slot = NULL;
+    const struct RSA_private_key *k = &pks->u.RSA_private_key;
 
     DBG(DBG_CRYPT, DBG_log("RSA_sign_hash: Started using NSS"));
 
@@ -112,8 +113,8 @@ int sign_hash(const struct RSA_private_key *k
     if(privateKey==NULL) {
         DBG(DBG_CRYPT,
             DBG_log("Can't find the private key from the NSS CKA_ID"));
-	if(k->pub.nssCert != NULL) {
-	   privateKey = PK11_FindKeyByAnyCert(k->pub.nssCert,  osw_return_nss_password_file_info());
+	if(pks->pub->nssCert != NULL) {
+	   privateKey = PK11_FindKeyByAnyCert(pks->pub->nssCert,  osw_return_nss_password_file_info());
            if (privateKey == NULL) {
                loglog(RC_LOG_SERIOUS,
                       "Can't find the private key from the NSS CERT (err %d)",
